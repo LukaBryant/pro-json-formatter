@@ -3,7 +3,7 @@ const { app, BrowserWindow, Menu } = require('electron');
 const path = require('path');
 
 // 判断是否为开发环境
-const isDev = process.env.NODE_ENV === 'development' || process.argv.includes('--dev');
+const isDev = !app.isPackaged;
 
 function createWindow() {
   const win = new BrowserWindow({

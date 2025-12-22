@@ -1,5 +1,6 @@
 
 export type Theme = 'light' | 'dark';
+export type ToolMode = 'formatter' | 'comparison';
 
 export interface EditorProps {
   value: string;
