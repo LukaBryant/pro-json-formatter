@@ -1,17 +1,73 @@
-
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { DiffEditor } from '@monaco-editor/react';
 import { Split, FileText, ArrowRightLeft } from 'lucide-react';
 import { Theme } from '../types';
 
 interface ComparisonToolProps {
   theme: Theme;
+  leftJson: string;
+  rightJson: string;
+  onLeftChange: (value: string) => void;
+  onRightChange: (value: string) => void;
 }
 
-const ComparisonTool: React.FC<ComparisonToolProps> = ({ theme }) => {
-  const [original, setOriginal] = useState('{\n  "status": "old",\n  "version": 1.0\n}');
-  const [modified, setModified] = useState('{\n  "status": "new",\n  "version": 1.1,\n  "author": "Electron User"\n}');
+const ComparisonTool = forwardRef<any, ComparisonToolProps>(({ 
+  theme, 
+  leftJson, 
+  rightJson, 
+  onLeftChange, 
+  onRightChange 
+}, ref) => {
   const isDark = theme === 'dark';
+  const editorRef = useRef<any>(null);
+  
+  // 暴露强制同步方法给父组件
+  useImperativeHandle(ref, () => ({
+    flushChanges: () => {
+      if (editorRef.current) {
+        const editor = editorRef.current;
+        const currentLeftValue = editor.getOriginalEditor().getValue();
+        const currentRightValue = editor.getModifiedEditor().getValue();
+        
+        // 只有当值真正改变时才触发回调
+        if (currentLeftValue !== leftJson) {
+          onLeftChange(currentLeftValue);
+        }
+        if (currentRightValue !== rightJson) {
+          onRightChange(currentRightValue);
+        }
+      }
+    }
+  }));
+  
+  // ✅ 使用 useEffect 监听编辑器变化，实时更新
+  useEffect(() => {
+    if (!editorRef.current) return;
+    
+    const editor = editorRef.current;
+    
+    // 监听左侧编辑器（Original）
+    const leftDisposable = editor.getOriginalEditor().onDidChangeModelContent(() => {
+      const newValue = editor.getOriginalEditor().getValue();
+      if (newValue !== leftJson) {
+        onLeftChange(newValue);
+      }
+    });
+    
+    // 监听右侧编辑器（Modified）
+    const rightDisposable = editor.getModifiedEditor().onDidChangeModelContent(() => {
+      const newValue = editor.getModifiedEditor().getValue();
+      if (newValue !== rightJson) {
+        onRightChange(newValue);
+      }
+    });
+    
+    // 清理函数
+    return () => {
+      leftDisposable?.dispose();
+      rightDisposable?.dispose();
+    };
+  }, [leftJson, rightJson, onLeftChange, onRightChange]);
 
   return (
     <div className="flex flex-col h-full animate-in fade-in duration-300">
@@ -40,8 +96,8 @@ const ComparisonTool: React.FC<ComparisonToolProps> = ({ theme }) => {
         <DiffEditor
           height="100%"
           language="json"
-          original={original}
-          modified={modified}
+          original={leftJson}
+          modified={rightJson}
           theme={isDark ? 'vs-dark' : 'vs-light'}
           options={{
             renderSideBySide: true,
@@ -53,18 +109,13 @@ const ComparisonTool: React.FC<ComparisonToolProps> = ({ theme }) => {
             originalEditable: true,
           }}
           onMount={(editor) => {
-            // Sync content changes back if needed
-            editor.getOriginalEditor().onDidChangeModelContent(() => {
-              setOriginal(editor.getOriginalEditor().getValue());
-            });
-            editor.getModifiedEditor().onDidChangeModelContent(() => {
-              setModified(editor.getModifiedEditor().getValue());
-            });
+            // ✅ 修复光标跳转：保存编辑器引用，使用 useEffect 监听变化
+            editorRef.current = editor;
           }}
         />
       </div>
     </div>
   );
-};
+});
 
 export default ComparisonTool;

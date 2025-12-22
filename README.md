@@ -30,9 +30,10 @@
 - **🔍 JSON 格式化** - 一键美化 JSON 数据，提升可读性
 - **📦 JSON 压缩** - 快速压缩 JSON 为单行格式
 - **🔄 JSON 比较** - 并排对比两个 JSON 对象的差异
-- **✅ 实时验证** - 即时检测 JSON 语法错误
+- **✅ 实时验证** - 即时检测 JSON 语法错误，自动清空无效输出
 - **🎨 主题切换** - 支持亮色/暗色主题
-- **⌨️ 全局快捷键** - 提升工作效率的键盘快捷键
+- **⌨️ 可定制快捷键** - 自定义所有快捷键，包括全局唤起
+- **🪟 可调整布局** - 拖拽调整左右面板大小，布局自动保存
 - **💾 自动同步** - 输入输出双向实时同步
 
 ### 🎨 界面特性
@@ -46,13 +47,22 @@
 
 ## ⌨️ 快捷键
 
-| 快捷键 | 功能 |
-|--------|------|
-| `Cmd + F` | 格式化 JSON |
-| `Cmd + M` | 压缩 JSON |
-| `Cmd + D` | 切换格式化/比较模式 |
-| `Cmd + T` | 切换深色/浅色主题 |
-| `Cmd + ,` | 打开快捷键帮助 |
+### 应用内快捷键（可自定义）
+
+| 快捷键 | 功能 | 说明 |
+|--------|------|------|
+| `Cmd + F` | 格式化 JSON | 美化当前 JSON 数据 |
+| `Cmd + M` | 压缩 JSON | 压缩为单行格式 |
+| `Cmd + D` | 切换模式 | 在格式化/比较模式间切换 |
+| `Cmd + T` | 切换主题 | 在亮色/暗色主题间切换 |
+
+### 全局快捷键（可自定义）
+
+| 快捷键 | 功能 | 说明 |
+|--------|------|------|
+| `Cmd + Shift + J` | 唤起应用 | 在任何地方快速显示/隐藏应用窗口 |
+
+💡 **提示**：所有快捷键都可以在应用内自定义！点击侧边栏的设置按钮（⚙️）即可配置。
 
 ## 🛠️ 技术栈
 
@@ -131,7 +141,8 @@ pro-json-formatter/
 │   ├── EditorPanel.tsx      # 编辑器面板组件
 │   ├── Sidebar.tsx          # 侧边栏导航组件
 │   ├── ComparisonTool.tsx   # JSON 比较工具组件
-│   └── HotkeyModal.tsx      # 快捷键帮助弹窗
+│   ├── HotkeyModal.tsx      # 快捷键配置弹窗
+│   └── ResizablePanels.tsx  # 可调整大小的面板组件
 │
 ├── build/                    # Vite 构建输出（自动生成）
 └── dist/                     # Electron 打包输出（自动生成）
@@ -200,6 +211,71 @@ npm install
 1. 右键点击应用
 2. 选择"打开"
 3. 在弹出对话框中点击"打开"
+
+### Q: 下载的 DMG 文件提示"文件已损坏"无法打开？
+
+这是因为应用没有经过 Apple 官方签名认证，macOS Gatekeeper 会阻止运行。以下是几种解决方法：
+
+**方法 1：移除隔离属性（推荐）**
+
+打开终端，执行以下命令：
+
+```bash
+# 如果应用已经拖到 Applications 文件夹
+xattr -cr /Applications/ProJSON.app
+
+# 或者直接对 DMG 中的应用执行
+xattr -cr /path/to/ProJSON.app
+```
+
+然后再次打开应用即可。
+
+**方法 2：通过系统设置允许**
+
+1. 尝试打开应用（会提示损坏）
+2. 打开"系统设置" → "隐私与安全性"
+3. 找到被阻止的应用提示，点击"仍要打开"
+4. 在弹出的对话框中确认打开
+
+**方法 3：临时禁用 Gatekeeper（不推荐）**
+
+```bash
+# 禁用 Gatekeeper
+sudo spctl --master-disable
+
+# 打开应用后，重新启用
+sudo spctl --master-enable
+```
+
+⚠️ **安全提示**：请确保只对信任的应用使用上述方法。
+
+**🔐 开发者注意事项**
+
+如果您是项目维护者，要避免用户遇到此问题，建议：
+
+1. **申请 Apple Developer 账户**（$99/年）
+2. **为应用进行代码签名**：
+   ```bash
+   # 签名应用
+   codesign --deep --force --verify --verbose --sign "Developer ID Application: Your Name" ProJSON.app
+   
+   # 公证应用（notarize）
+   xcrun notarytool submit ProJSON-1.0.0.dmg --apple-id your@email.com --team-id TEAMID --wait
+   ```
+3. **在 package.json 中配置签名**：
+   ```json
+   {
+     "build": {
+       "mac": {
+         "identity": "Developer ID Application: Your Name (TEAM_ID)",
+         "hardenedRuntime": true,
+         "gatekeeperAssess": false,
+         "entitlements": "build/entitlements.mac.plist",
+         "entitlementsInherit": "build/entitlements.mac.plist"
+       }
+     }
+   }
+   ```
 
 ### Q: 应用体积为什么这么大？
 Electron 应用包含完整的 Chromium 引擎和 Node.js 运行时，这是正常现象（约 150-200MB）。

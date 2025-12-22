@@ -11,7 +11,8 @@ const EditorPanel: React.FC<EditorProps> = ({
   readOnly = false, 
   title,
   isValid = true,
-  theme
+  theme,
+  error = null
 }) => {
   const [copied, setCopied] = React.useState(false);
 
@@ -109,8 +110,6 @@ const EditorPanel: React.FC<EditorProps> = ({
             foldingHighlight: true,
             showFoldingControls: 'always',
             lineNumbers: 'on',
-            renderIndentGuides: true,
-            backgroundColor: isDark ? '#0f172a' : '#ffffff',
             scrollbar: {
               vertical: 'visible',
               horizontal: 'visible',
@@ -121,6 +120,21 @@ const EditorPanel: React.FC<EditorProps> = ({
           }}
         />
       </div>
+
+      {/* ✨ Error Display Bar */}
+      {error && !isValid && (
+        <div className={`flex items-start gap-2 px-4 py-2.5 border-t text-sm animate-in slide-in-from-bottom-2 ${
+          isDark 
+            ? 'bg-rose-500/10 border-rose-500/20 text-rose-400' 
+            : 'bg-rose-50 border-rose-200 text-rose-700'
+        }`}>
+          <AlertCircle size={16} className="flex-shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <span className="font-semibold">Line {error.line}, Column {error.column}:</span>
+            <span className="ml-2">{error.message}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
