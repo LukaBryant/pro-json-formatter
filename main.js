@@ -1,15 +1,25 @@
-const { app, BrowserWindow, Menu, globalShortcut, ipcMain } = require('electron');
+const { app, BrowserWindow, Menu, globalShortcut, ipcMain, nativeImage } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
 // 判断是否为开发环境
 const isDev = !app.isPackaged;
 
+// 环境隔离：显式设置应用名称
+if (isDev) {
+  app.name = 'ProJSON-Dev'; // 开发版目录：~/Library/Application Support/ProJSON-Dev
+} else {
+  app.name = 'ProJSON';     // 正式版目录：~/Library/Application Support/ProJSON
+}
+
 let mainWindow = null;
 let currentGlobalHotkey = 'CommandOrControl+Shift+J'; // 默认快捷键
 
 // 创建日志记录函数
 function logToFile(message) {
+  // 生产环境下不再记录日志到文件
+  if (!isDev) return;
+
   const logDir = path.join(app.getPath('userData'), 'logs');
   const logFile = path.join(logDir, 'app.log');
   
@@ -89,12 +99,15 @@ function writeConfig(config) {
 }
 
 function createWindow() {
+  const iconPath = path.join(__dirname, 'assets', 'icon.png');
+  
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     minWidth: 800,
     minHeight: 600,
     titleBarStyle: 'hiddenInset', // macOS 原生的"红绿灯"按钮
+    icon: fs.existsSync(iconPath) ? iconPath : undefined,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -103,6 +116,12 @@ function createWindow() {
     },
     backgroundColor: '#f8fafc'
   });
+
+  // 设置 macOS Dock 图标
+  if (process.platform === 'darwin' && fs.existsSync(iconPath)) {
+    const image = nativeImage.createFromPath(iconPath);
+    app.dock.setIcon(image);
+  }
 
   // 开发环境：加载 Vite 开发服务器
   if (isDev) {
@@ -130,9 +149,11 @@ function toggleWindow() {
   } else if (mainWindow.isMinimized()) {
     mainWindow.restore();
     mainWindow.focus();
-  } else if (mainWindow.isVisible()) {
-    mainWindow.hide();
+  } else if (mainWindow.isVisible() && mainWindow.isFocused()) {
+    // 如果窗口可见且已聚焦，则最小化（实现 macOS 的"缩小"效果）
+    mainWindow.minimize();
   } else {
+    // 如果窗口隐藏或未聚焦，则显示并聚焦
     mainWindow.show();
     mainWindow.focus();
   }
